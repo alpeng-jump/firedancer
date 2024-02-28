@@ -24,21 +24,20 @@ FD_PROTOTYPES_BEGIN
    will transition the CNC to RUN state during operation, and finally to BOOT on halt.
    
    The caller is responsible for ensuring the lifecycle of cnc, mcache, dcache,
-   rng, and scratch span the entire operation of this function.
-*/
+   rng, and scratch span the entire operation of this function. */
 
 FD_FN_CONST ulong
 fd_archive_tile_scratch_align( void );
 
 int
-fd_archive_tile(  fd_cnc_t *              cnc,        /* Local join to the replay's command-and-control */
-                  const char *            pcap_path,  /* Path to the pcapng file for output */      
-                  const fd_frag_meta_t *  mcache,     /* Local join to mcache that producer caches metadata for frags produced */
-                  const uchar *           dcache,     /* Local join to dcache that producer writes frag payloads to*/
-                  ulong                   cr_max,     /* Maximum number of flow control credits, 0 means use a reasonable default */
-                  long                    lazy,       /* Lazyiness, <=0 means use a reasonable default */
-                  fd_rng_t *              rng,        /* Local join to the rng this replay should use */
-                  void *                  scratch );  /* Tile scratch memory */
+fd_archive_tile( fd_cnc_t *              cnc,        /* Local join to the archive's command-and-control */
+                 const char *            pcap_path,  /* Path to the pcapng file for output */      
+                 const fd_frag_meta_t *  mcache,     /* Local join to mcache that producer caches metadata for frags produced */
+                 const uchar *           dcache,     /* Local join to dcache that producer writes frag payloads to*/
+                 ulong                   cr_max,     /* Maximum number of flow control credits, 0 means use a reasonable default */
+                 long                    lazy,       /* Lazyiness, <=0 means use a reasonable default */
+                 fd_rng_t *              rng,        /* Local join to the rng this archive should use */
+                 void *                  scratch );  /* Tile scratch memory */
 
 FD_PROTOTYPES_END
 
