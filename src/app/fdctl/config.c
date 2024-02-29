@@ -653,6 +653,7 @@ topo_initialize( config_t * config ) {
   fd_topob_wksp( topo, "store"  );
   fd_topob_wksp( topo, "sign"   );
   fd_topob_wksp( topo, "metric" );
+  fd_topob_wksp( topo, "archive" );
 
   #define FOR(cnt) for( ulong i=0UL; i<cnt; i++ )
 
