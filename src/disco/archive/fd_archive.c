@@ -27,25 +27,25 @@ ulong fd_archive_tile_scratch_footprint( ulong in_cnt ) {
     if( FD_UNLIKELY( in_cnt >FD_ARCHIVE_TILE_IN_MAX  ) ) return 0UL;
     ulong l = FD_LAYOUT_INIT;
     l = FD_LAYOUT_APPEND( l, alignof(fd_archive_tile_in_t), in_cnt*sizeof(fd_archive_tile_in_t)     ); /* in */
-    l = FD_LAYOUT_APPEND( l, alignof(uchar *),              1024UL                                  ); /* dc_scratch */
+    l = FD_LAYOUT_APPEND( l, alignof(uchar *)             , USHORT_MAX                              ); /* cc_scratch */
     return FD_LAYOUT_FINI( l, fd_archive_tile_scratch_align() );
 }
 
 int 
 fd_archive_tile( fd_cnc_t *                  cnc,
-                 ulong                       flags,
+                 ulong                       flags __attribute__((unused)),
                  ulong                       in_cnt,
                  fd_frag_meta_t const **     in_mcache,
                  ulong **                    in_fseq,
-                 fd_frag_meta_t const *      mcache,
+                 fd_frag_meta_t *            mcache,
                  uchar const **              in_dcache,
-                 uchar const *               dcache,
+                 uchar *                     dcache __attribute__((unused)),
                  char const *                pcap_path,        
                  ulong                       cr_max,                                  
                  long                        lazy,
                  fd_rng_t *                  rng,
                  void *                      scratch,
-                 void *                      ctx ) {
+                 void *                      ctx __attribute__((unused))) {
 
     /* pcap stream state */
     FILE *  pcap_file;  /* handle of pcap file stream */    
@@ -53,12 +53,12 @@ fd_archive_tile( fd_cnc_t *                  cnc,
     /* in frag stream state */
     ulong                  in_seq;
     fd_archive_tile_in_t * in;
-    void *                 dc_scratch; 
+    void *                 cc_scratch; 
 
     /* out frag stream state */
     ulong   depth; /* depth of the mcache / positive integer power of 2 */
     ulong   _sync; /* local sync for mcache if mcache is NULL */
-    ulong * sync;  /* local addr where mux mcache sync info is published */
+    ulong * sync;  /* local addr where archive mcache sync info is published */
     ulong   seq;   /* next archive frag sequence number to publish */
 
     /* housekeeping state */
@@ -94,26 +94,14 @@ fd_archive_tile( fd_cnc_t *                  cnc,
 
         FD_LOG_INFO(( "Opening pcap %s", pcap_path ));
         pcap_file = fopen(pcap_path, "wb");
-        if( FD_UNLIKELY( !pcap_file ) ) { FD_LOG_WARNING(( "pcapng fopen failed" )); return 1; }
-
-        fd_pcapng_shb_opts_t shb_opts = {
-            .hardware     = "x86_64 ossdev",
-            .os           = "Linux",
-            .userappl     = "fd_archive",
-        };
-        fd_pcapng_fwrite_shb(&shb_opts, pcap_file);
-        FD_LOG_DEBUG(( "Wrote SHB (end=%#lx)", ftell( pcap_file ) ));   
-
-        fd_pcapng_idb_opts_t idb_opts = {};
-        fd_pcapng_idb_defaults(&idb_opts, 0);
-        fd_pcapng_fwrite_idb(FD_PCAPNG_LINKTYPE_ETHERNET, &idb_opts, pcap_file);
-        FD_LOG_DEBUG(( "Wrote IDB (end=%#lx)", ftell( pcap_file ) ));
+        if( FD_UNLIKELY( !pcap_file ) ) { FD_LOG_WARNING(( "pcap fopen failed" )); return 1; }
+        FD_TEST( fd_pcap_fwrite_hdr( pcap_file, FD_PCAP_LINK_LAYER_USER0 ) );
 
         /* in frag stream init */
             
         in_seq = 0UL;
         in         = (fd_archive_tile_in_t *) FD_SCRATCH_ALLOC_APPEND( l, alignof(fd_archive_tile_in_t), in_cnt*sizeof(fd_archive_tile_in_t) );
-        dc_scratch = (void *)                 FD_SCRATCH_ALLOC_APPEND( l, alignof(uchar *), 1024UL ); // todo upper bound of frag size ??
+        cc_scratch = (void *)                 FD_SCRATCH_ALLOC_APPEND( l, alignof(uchar *)             , USHORT_MAX                          );
 
         ulong min_in_depth = (ulong)LONG_MAX;
 
@@ -138,7 +126,7 @@ fd_archive_tile( fd_cnc_t *                  cnc,
         
 
         ulong const * this_in_sync = fd_mcache_seq_laddr_const( this_in->mcache );
-        ulong depth    = fd_mcache_depth( this_in->mcache ); min_in_depth = fd_ulong_min( min_in_depth, depth );
+        depth    = fd_mcache_depth( this_in->mcache ); min_in_depth = fd_ulong_min( min_in_depth, depth );
         if( FD_UNLIKELY( depth > UINT_MAX ) ) { FD_LOG_WARNING(( "in_mcache[%lu] too deep", in_idx )); return 1; }
         this_in->depth = (uint)depth;
         this_in->idx   = (uint)in_idx;
@@ -242,10 +230,11 @@ fd_archive_tile( fd_cnc_t *                  cnc,
         if( in_seq>=in_cnt ) in_seq = 0UL; /* cmov */
 
 
-        /* Check if this in has any new fragments to mux */
+        /* Check if this in has any new fragments to archive */
 
         ulong                  this_in_seq   = this_in->seq;
         fd_frag_meta_t const * this_in_mline = this_in->mline; /* Already at appropriate line for this_in_seq */
+        uchar const *          this_in_dcache = this_in->dcache;
 
         __m128i seq_sig = fd_frag_meta_seq_sig_query( this_in_mline );
     #if FD_USING_CLANG
@@ -277,12 +266,9 @@ fd_archive_tile( fd_cnc_t *                  cnc,
         FD_COMPILER_MFENCE();
         ulong chunk    = (ulong)this_in_mline->chunk;
         ulong sz       = (ulong)this_in_mline->sz;
-        ulong ctl      = (ulong)this_in_mline->ctl;
-        ulong tsorig   = (ulong)this_in_mline->tsorig;
-        ulong sig      = (ulong)this_in_mline->sig;
-        ulong data_offset = chunk * FD_DCACHE_ALIGN;        
-        uchar *data = this_in->dcache + data_offset;
-        fd_memcpy(dc_scratch, data, sz);
+                
+        void const * buffer = fd_chunk_to_laddr_const( this_in_dcache, chunk );
+        fd_memcpy(cc_scratch, buffer, sz);
         FD_COMPILER_MFENCE();
         ulong seq_test = this_in_mline->seq;
         FD_COMPILER_MFENCE();
@@ -297,14 +283,10 @@ fd_archive_tile( fd_cnc_t *                  cnc,
         }
         
         /* We have successfully loaded the dcache. Write to the pcapng file */
-        if (FD_UNLIKELY(tsorig > LONG_MAX)) {
-            FD_LOG_WARNING(( "Tsorig too large for pcapng ts range" ));
-            now = fd_tickcount();
-            continue;
-        }
-
-        if( FD_UNLIKELY( 1UL!= fd_pcapng_fwrite_pkt((long)tsorig, (void const *)dc_scratch, sz, (void *)pcap_file)) ) {
-            FD_LOG_WARNING(( "fd_pcapng_fwrite_pkt failed (%i-%s)", errno, fd_io_strerror( errno ) ));
+        /* 64UL frag meta + USHORT_MAX data frag chunk + 4 FCS */
+        /* TODO: stash the hash of the link name in unprivileged init so we can pull it based off in_idx */
+        if( FD_UNLIKELY( 1UL!= fd_pcap_fwrite_pkt( (long)this_in_seq, this_in_mline, sizeof(fd_frag_meta_t), (void const *) cc_scratch, sz, 0, (void *)pcap_file )) ) {
+            FD_LOG_WARNING(( "fd_pcap_fwrite_pkt failed (%i-%s)", errno, fd_io_strerror( errno ) ));
         }
 
         /* Wind up for next iteration */ 

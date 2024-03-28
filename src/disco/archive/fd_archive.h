@@ -5,10 +5,11 @@
    into a pcapng file */
 
 #include "../fd_disco_base.h"
-#include "../tango/mcache/fd_mcache.h"
-#include "../tango/dcache/fd_dcache.h"
-#include "../tango/cnc/fd_cnc.h"
-#include "../util/net/fd_pcapng.h"
+#include "../../tango/mcache/fd_mcache.h"
+#include "../../tango/dcache/fd_dcache.h"
+#include "../../tango/cnc/fd_cnc.h"
+#include "../../util/net/fd_pcapng.h"
+#include "../../util/net/fd_pcap.h"
 
 #define FD_ARCHIVE_CNC_SIGNAL_ACK (4UL)
 
@@ -49,15 +50,17 @@ FD_PROTOTYPES_BEGIN
 FD_FN_CONST ulong
 fd_archive_tile_scratch_align( void );
 
+ulong fd_archive_tile_scratch_footprint( ulong in_cnt );
+
 int 
 fd_archive_tile( fd_cnc_t *                  cnc,         /* Local join to the archive's command-and-control */
                  ulong                       flags,       /* Any of FD_ARCHIVE_FLAG_* specifying how to run archive */  
                  ulong                       in_cnt,      /* Number of input mcaches to read from, inputs are indexed [0,in_cnt) */
                  fd_frag_meta_t const **     in_mcache,   /* in_mcache[in_idx] is the local join to input in_idx's mcache */
                  ulong **                    in_fseq,     /* in_fseq  [in_idx] is the local join to input in_idx's fseq */
-                 fd_frag_meta_t const *      mcache,      /* Local join to mcache that producer caches metadata for frags produced */
+                 fd_frag_meta_t *            mcache,      /* Local join to mcache that producer caches metadata for frags produced */
                  uchar const **              in_dcache,   /* in_dcache[in_idx] is the local join to input in_idx's dcache */
-                 uchar const *               dcache,      /* Local join to dcache that producer writes frag payloads to*/
+                 uchar *                     dcache,      /* Local join to dcache that producer writes frag payloads to */
                  char const *                pcap_path,   /* Path to the pcapng file for output */              
                  ulong                       cr_max,      /* Maximum number of flow control credits, 0 means use a reasonable default */                             
                  long                        lazy,        /* Lazyiness, <=0 means use a reasonable default */

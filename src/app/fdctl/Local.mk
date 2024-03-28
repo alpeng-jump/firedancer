@@ -24,6 +24,7 @@ $(call add-objs,run/tiles/fd_bank,fd_fdctl)
 $(call add-objs,run/tiles/fd_shred,fd_fdctl)
 $(call add-objs,run/tiles/fd_store,fd_fdctl)
 $(call add-objs,run/tiles/fd_sign,fd_fdctl)
+$(call add-objs,run/tiles/fd_archive,fd_fdctl)
 
 # fdctl configure stages
 $(call add-objs,configure/configure,fd_fdctl)
@@ -52,6 +53,7 @@ $(OBJDIR)/obj/app/fdctl/run/tiles/fd_shred.o: src/app/fdctl/run/tiles/generated/
 $(OBJDIR)/obj/app/fdctl/run/tiles/fd_verify.o: src/app/fdctl/run/tiles/generated/verify_seccomp.h
 $(OBJDIR)/obj/app/fdctl/run/tiles/fd_metric.o: src/app/fdctl/run/tiles/generated/metric_seccomp.h
 $(OBJDIR)/obj/app/fdctl/run/tiles/fd_sign.o: src/app/fdctl/run/tiles/generated/sign_seccomp.h
+$(OBJDIR)/obj/app/fdctl/run/tiles/fd_archive.o: src/app/fdctl/run/tiles/generated/archive_seccomp.h
 
 # Phony target to always rerun cargo build ... it will detect if anything
 # changed on the library side.

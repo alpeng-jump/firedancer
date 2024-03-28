@@ -699,6 +699,7 @@ topo_initialize( config_t * config ) {
   /**/                 fd_topob_tile( topo, "store",   "store",   "metric_in", "metric_in",  tile_to_cpu[topo->tile_cnt], 1,       NULL,           0UL );
   /**/                 fd_topob_tile( topo, "sign",    "sign",    "metric_in", "metric_in",  tile_to_cpu[topo->tile_cnt], 0,       NULL,           0UL );
   /**/                 fd_topob_tile( topo, "metric",  "metric",  "metric_in", "metric_in",  tile_to_cpu[topo->tile_cnt], 0,       NULL,           0UL );
+  /**/                 fd_topob_tile( topo, "archive", "archive", "metric_in", "metric_in",  tile_to_cpu[topo->tile_cnt], 0,       NULL,           0UL );
 
   if( FD_UNLIKELY( affinity_tile_cnt<topo->tile_cnt ) )
     FD_LOG_ERR(( "The topology you are using has %lu tiles, but the CPU affinity specified in the config tile as [layout.affinity] only provides for %lu cores. "
@@ -870,6 +871,8 @@ topo_initialize( config_t * config ) {
     } else if( FD_UNLIKELY( !strcmp( tile->name, "metric" ) ) ) {
       tile->metric.prometheus_listen_port = config->tiles.metric.prometheus_listen_port;
 
+    } else if( FD_UNLIKELY( !strcmp( tile->name, "archive" ) ) ) {
+      
     } else {
       FD_LOG_ERR(( "unknown tile name %lu `%s`", i, tile->name ));
     }

@@ -28,6 +28,7 @@ extern fd_topo_run_tile_t fd_tile_shred;
 extern fd_topo_run_tile_t fd_tile_store;
 extern fd_topo_run_tile_t fd_tile_sign;
 extern fd_topo_run_tile_t fd_tile_metric;
+extern fd_topo_run_tile_t fd_tile_archive;
 
 fd_topo_run_tile_t * TILES[] = {
   &fd_tile_net,
@@ -42,6 +43,7 @@ fd_topo_run_tile_t * TILES[] = {
   &fd_tile_store,
   &fd_tile_sign,
   &fd_tile_metric,
+  &fd_tile_archive,
   NULL,
 };
 

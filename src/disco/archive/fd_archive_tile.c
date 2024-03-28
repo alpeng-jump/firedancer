@@ -17,7 +17,6 @@ main( int     argc,
   char const * _in_caches  = fd_env_strip_cmdline_cstr ( &argc, &argv, "--in-caches",  NULL, ""                          );
   char const * _in_fseqs   = fd_env_strip_cmdline_cstr ( &argc, &argv, "--in-fseqs",   NULL, ""                          );
   char const * _pcap_path  = fd_env_strip_cmdline_cstr ( &argc, &argv, "--pcap_path",  NULL, NULL                        );
-  ulong        orig        = fd_env_strip_cmdline_ulong( &argc, &argv, "--orig",       NULL, 0UL                         );
   char const * _mcache     = fd_env_strip_cmdline_cstr ( &argc, &argv, "--mcache",     NULL, NULL                        );
   char const * _dcache     = fd_env_strip_cmdline_cstr ( &argc, &argv, "--dcache",     NULL, NULL                        );
   ulong        cr_max      = fd_env_strip_cmdline_ulong( &argc, &argv, "--cr-max",     NULL, 0UL                         ); /*   0 <> use default */
@@ -79,7 +78,7 @@ main( int     argc,
 
   FD_LOG_NOTICE(( "Creating scratch" ));
   ulong footprint = fd_archive_tile_scratch_footprint( in_cnt );
-  if( FD_UNLIKELY( !footprint ) ) FD_LOG_ERR(( "fd_mux_tile_scratch_footprint failed" ));
+  if( FD_UNLIKELY( !footprint ) ) FD_LOG_ERR(( "fd_archive_tile_scratch_footprint failed" ));
   ulong  page_sz  = FD_SHMEM_HUGE_PAGE_SZ;
   ulong  page_cnt = fd_ulong_align_up( footprint, page_sz ) / page_sz;
   ulong  cpu_idx  = fd_tile_cpu_id( fd_tile_idx() );
